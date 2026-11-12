@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1b1d21">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Señales">
+<title>Señales de tránsito – Argentina</title>
+<style>
+  :root{--bg:#1b1d21;--panel:#272a30;--line:#3a3e46;--ink:#f3f1ea;--mute:#a5a9b3;
+    --yellow:#ffd100;--ok:#2fbf71;--bad:#ef4b4b;--card:#f6f4ee;--cardink:#1b1d21}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;justify-content:center;overflow:hidden;-webkit-user-select:none;user-select:none}
+  .wrap{width:100%;max-width:440px;height:100%;display:flex;flex-direction:column;padding:14px 16px 18px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px}
+  h1{font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  h1 span{color:var(--yellow)}
+  .back{background:none;color:var(--mute);font-size:14px;font-weight:700;padding:6px 0;display:none}
+  .view{display:none;flex:1;min-height:0;flex-direction:column}
+  .view.on{display:flex}
+  button{font:inherit;border:0;border-radius:14px;padding:15px 10px;font-weight:800;font-size:16px;cursor:pointer;color:#fff}
+  button:active{transform:scale(.98)}
+  .pri{background:var(--yellow);color:#1b1d21;width:100%}
+  .sec{background:var(--panel);border:1px solid var(--line);color:var(--ink);width:100%}
+  /* inicio */
+  #home{overflow-y:auto;padding-top:12px}
+  .lead{color:var(--mute);font-size:14px;line-height:1.45;margin-bottom:14px}
+  .lvl{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);
+    border-left:6px solid var(--yellow);border-radius:14px;padding:13px 14px;margin-bottom:10px;color:var(--ink)}
+  .lvl.lock{opacity:.5;border-left-color:var(--line)}
+  .lvl.done{border-left-color:var(--ok)}
+  .lvl b{font-size:17px;display:flex;justify-content:space-between;align-items:center}
+  .lvl b em{font-style:normal;font-size:13px;color:var(--mute);font-weight:600}
+  .lvl small{display:block;color:var(--mute);font-size:13px;font-weight:500;margin-top:3px}
+  .meter{height:6px;border-radius:3px;background:var(--line);margin-top:9px;overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--yellow);border-radius:3px}
+  .lvl.done .meter i{background:var(--ok)}
+  .reset{background:none;color:var(--mute);font-size:12px;font-weight:500;text-decoration:underline;padding:10px;width:100%}
+  /* juego */
+  .stats{display:flex;gap:8px;margin-top:12px}
+  .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+  .stat b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+  .stat small{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.07em}
+  .bar{height:6px;border-radius:3px;margin-top:12px;position:relative;overflow:hidden;
+    background:repeating-linear-gradient(90deg,var(--line) 0 14px,transparent 14px 22px)}
+  .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--yellow);border-radius:3px;transition:width .3s}
+  .stage{flex:1;position:relative;margin:16px 0 14px;min-height:0}
+  .card{position:absolute;inset:0;background:var(--card);color:var(--cardink);border-radius:22px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;
+    box-shadow:0 14px 34px rgba(0,0,0,.45);touch-action:none;cursor:grab;will-change:transform}
+  .card.anim{transition:transform .28s ease-out,opacity .28s}
+  .card svg{width:min(58%,220px);height:auto;flex-shrink:1;min-height:0}
+  .cat{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6c6f76;margin-bottom:12px}
+  .q{font-size:14px;color:#55585f;margin-top:16px}
+  .name{font-size:22px;font-weight:800;text-align:center;line-height:1.2;margin-top:4px;text-wrap:balance}
+  .name.long{font-size:17px}
+  .stamp{position:absolute;top:22px;font-size:20px;font-weight:900;letter-spacing:.06em;padding:4px 10px;
+    border:4px solid;border-radius:8px;opacity:0}
+  .stamp.yes{left:18px;color:var(--ok);transform:rotate(-12deg)}
+  .stamp.no{right:18px;color:var(--bad);transform:rotate(12deg)}
+  .hint{text-align:center;font-size:13px;color:var(--mute);margin-bottom:10px}
+  .btns{display:flex;gap:12px}
+  .btns button{flex:1}
+  .bno{background:var(--bad)} .byes{background:var(--ok)}
+  .flash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:900;
+    color:var(--ok);pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap}
+  .flash.on{opacity:1}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:5}
+  .sheet.on{display:flex}
+  .sheet>div{background:var(--panel);width:100%;max-width:440px;border-radius:22px 22px 0 0;padding:20px 18px 22px;
+    border-top:4px solid var(--bad)}
+  .sheet h2{font-size:18px;color:var(--bad);margin-bottom:12px}
+  .rev{display:flex;gap:14px;align-items:center}
+  .rev svg{width:84px;height:84px;flex-shrink:0;background:var(--card);border-radius:12px;padding:6px}
+  .rev b{font-size:17px;display:block;margin-bottom:4px}
+  .rev p{font-size:14px;color:var(--mute);line-height:1.4}
+  .sheet button{margin-top:16px}
+  /* fin y estudio */
+  #end,#study{overflow-y:auto;padding-top:14px}
+  .big{font-size:56px;font-weight:900;color:var(--yellow);font-variant-numeric:tabular-nums;line-height:1}
+  .big.ok{color:var(--ok)} .big.bad{color:var(--bad)}
+  #end h2{font-size:20px;margin-top:6px}
+  #end p{color:var(--mute);font-size:14px;margin:6px 0 14px;line-height:1.45}
+  #end button{margin-bottom:10px}
+  h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:16px 0 8px}
+  .miss{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:8px;margin-bottom:8px}
+  .miss svg{width:56px;height:56px;flex-shrink:0;background:var(--card);border-radius:8px;padding:4px}
+  .miss b{font-size:15px;display:block}
+  .miss span{font-size:12px;color:var(--mute);line-height:1.35;display:block;margin-top:2px}
+  .tabs{display:flex;gap:6px;position:sticky;top:-14px;background:var(--bg);padding:8px 0;z-index:2}
+  .tabs button{flex:1;padding:9px 4px;font-size:13px;background:var(--panel);border:1px solid var(--line);color:var(--mute)}
+  .tabs button.on{background:var(--yellow);color:#1b1d21;border-color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Señales <span>de tránsito</span></h1><button class="back" id="back">‹ Inicio</button></header>
+
+  <section class="view on" id="home"></section>
+
+  <section class="view" id="game">
+    <div class="stats">
+      <div class="stat"><b id="s1">0</b><small>Aciertos</small></div>
+      <div class="stat"><b id="s2">0</b><small>Racha</small></div>
+      <div class="stat"><b id="s3">0</b><small id="s3l">Aprendidas</small></div>
+    </div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="stage" id="stage"><div class="flash" id="flash"></div></div>
+    <div class="hint">← Incorrecto &nbsp;·&nbsp; deslizá la tarjeta &nbsp;·&nbsp; Correcto →</div>
+    <div class="btns">
+      <button class="bno" id="bno">✕ Incorrecto</button>
+      <button class="byes" id="byes">✓ Correcto</button>
+    </div>
+  </section>
+
+  <section class="view" id="end"></section>
+  <section class="view" id="study"></section>
+</div>
+
+<div class="sheet" id="sheet"><div>
+  <h2 id="shT"></h2>
+  <div class="rev"><span id="shS"></span><div><b id="shN"></b><p id="shP"></p></div></div>
+  <button class="pri" id="shB">Seguir</button>
+</div></div>
+
+<script>
+const SIGNS=(()=>{const R='#d11f26',K='#111',W='#fff',B='#1456a8',Y='#ffd100',O='#f58220',G='#0a7a3d';
+const st=(c,w)=>`fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+const at=(x,y,s,i,r=0)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${s}) translate(-100 -100)">${i}</g>`;
+const txt=(t,s,y,f=K,x=100)=>`<text x="${x}" y="${y}" font-size="${s}" font-weight="900" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" fill="${f}">${t}</text>`;
+const head=(x,y,a,c=K,s=1)=>`<polygon transform="translate(${x} ${y}) rotate(${a}) scale(${s})" points="0,-20 -18,10 18,10" fill="${c}"/>`;
+const ln=(d,w=14,c=K)=>`<path d="${d}" ${st(c,w)} style="stroke-linecap:butt"/>`;
+/* ---------- carcasas ---------- */
+const ring=x=>`<circle cx="100" cy="100" r="86" fill="${W}" stroke="${R}" stroke-width="20"/>${x}`;
+const slash=`<line x1="42" y1="42" x2="158" y2="158" stroke="${R}" stroke-width="15"/>`;
+const slash2=`<line x1="158" y1="42" x2="42" y2="158" stroke="${R}" stroke-width="15"/>`;
+const proh=x=>ring(x+slash);
+const bring=x=>`<circle cx="100" cy="100" r="86" fill="${B}" stroke="${R}" stroke-width="20"/>${x}`;
+const dia=(x,f=Y)=>`<rect x="31" y="31" width="138" height="138" rx="12" transform="rotate(45 100 100)" fill="${f}" stroke="${K}" stroke-width="6"/>${x}`;
+const tri=x=>`<polygon points="100,18 188,172 12,172" fill="${W}" stroke="${R}" stroke-width="16" stroke-linejoin="round"/>${x}`;
+const blue=x=>`<rect x="22" y="10" width="156" height="180" rx="14" fill="${B}"/>${x}`;
+const serv=x=>blue(`<rect x="38" y="32" width="124" height="124" rx="8" fill="${W}"/>`+at(100,94,.95,x));
+const green=x=>`<rect x="8" y="42" width="184" height="116" rx="10" fill="${G}"/><rect x="14" y="48" width="172" height="104" rx="6" fill="none" stroke="${W}" stroke-width="3"/>${x}`;
+const end=(x,c)=>`<circle cx="100" cy="100" r="92" fill="${W}" stroke="${K}" stroke-width="6"/>${x}<line x1="160" y1="40" x2="40" y2="160" stroke="${c}" stroke-width="20"/>`;
+/* ---------- pictogramas (centrados en 100,100) ---------- */
+const whl=(x,y,r,c,b)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="${b}" stroke-width="3"/><circle cx="${x}" cy="${y}" r="${r*.35}" fill="${b}"/>`;
+const car=(c,b)=>`<path fill="${c}" d="M48 116V101Q48 94 57 93L72 90 83 76Q86 72 92 72H116Q122 72 125 76L135 90 145 93Q152 94 152 101V116Z"/><path fill="${b}" d="M80 90L88 79H102V90ZM107 79H117L126 90H107Z"/>${whl(72,117,12,c,b)}${whl(130,117,12,c,b)}`;
+const carRear=(c,b)=>`<path fill="${c}" d="M76 92L82 68H118L124 92Z"/><path fill="${b}" d="M84 88L88 74H112L116 88Z"/><rect x="68" y="90" width="64" height="30" rx="6" fill="${c}"/><rect x="72" y="118" width="14" height="14" fill="${c}"/><rect x="114" y="118" width="14" height="14" fill="${c}"/>`;
+const truckRear=(c,b)=>`<rect x="70" y="56" width="60" height="64" rx="3" fill="${c}"/><rect x="74" y="118" width="16" height="16" fill="${c}"/><rect x="110" y="118" width="16" height="16" fill="${c}"/>`;
+const moto=(c,b)=>`<circle cx="68" cy="116" r="14" ${st(c,7)}/><circle cx="134" cy="116" r="14" ${st(c,7)}/><path fill="${c}" d="M74 100L90 84H112L120 92 136 114H126L112 102 100 114H78Z"/><path ${st(c,6)} d="M120 92L114 76H102"/>`;
+const bike=c=>`<circle cx="66" cy="114" r="17" ${st(c,5)}/><circle cx="134" cy="114" r="17" ${st(c,5)}/><path ${st(c,5)} d="M66 114L90 84H120L100 114H66M90 84L100 114M120 84L134 114M82 78H98M90 84L88 78M120 84L117 72H108"/>`;
+const truck=(c,b)=>`<rect x="44" y="66" width="68" height="46" fill="${c}"/><path fill="${c}" d="M116 82H136L152 98V114H116Z"/><path fill="${b}" d="M122 88H134L143 98H122Z"/><rect x="44" y="110" width="108" height="5" fill="${c}"/>${whl(64,117,11,c,b)}${whl(134,117,11,c,b)}`;
+const trailer=(c,b)=>`<rect x="66" y="68" width="88" height="42" fill="${c}"/>${whl(88,116,11,c,b)}${whl(134,116,11,c,b)}<path ${st(c,6)} d="M66 102H46"/><circle cx="44" cy="102" r="6" ${st(c,4)}/>`;
+const ped=c=>`<circle cx="100" cy="58" r="11" fill="${c}"/><path ${st(c,11)} d="M100 76L98 106L84 140M98 106L114 138M100 80L82 100M100 80L118 98"/>`;
+const horse=c=>`<path fill="${c}" d="M62 88Q62 80 72 80H118L128 62Q130 56 137 58L147 66Q150 70 145 75L136 72 132 92V100H66Q62 100 62 94Z"/><path ${st(c,6)} d="M70 98V134M84 98V134M116 98V134M128 98V134"/><path ${st(c,5)} d="M63 86Q52 92 54 110"/>`;
+const cow=c=>`<path fill="${c}" d="M56 84Q56 76 66 76H126L134 72Q146 70 150 78V90Q150 97 142 97H136L132 104H60Q56 104 56 98Z"/><path ${st(c,4)} d="M137 72Q134 61 143 59M146 72Q150 63 157 65"/><path ${st(c,7)} d="M66 102V136M80 102V136M116 102V136M128 102V136"/><path fill="${c}" d="M92 104h16v7h-16z"/><path ${st(c,4)} d="M57 82Q48 88 50 104"/>`;
+const rider=c=>horse(c)+`<circle cx="94" cy="42" r="9" fill="${c}"/><path ${st(c,9)} d="M94 54V80L104 102M94 60L114 70"/>`;
+const cart=c=>at(132,106,.6,horse(c))+`<rect x="34" y="84" width="48" height="20" fill="${c}"/><circle cx="58" cy="114" r="16" ${st(c,6)}/><path ${st(c,5)} d="M82 98H100"/>`;
+const handcart=c=>`<path fill="${c}" d="M70 80H136L128 108H78Z"/><circle cx="103" cy="122" r="13" ${st(c,6)}/><path ${st(c,6)} d="M70 84L46 72M82 108L66 132"/>`;
+const tractor=(c,b)=>`<path fill="${c}" d="M96 88H150V114H100Z"/><path ${st(c,6)} d="M62 88V58H98V88"/><path ${st(c,6)} d="M136 88V66"/>${whl(76,110,25,c,b)}${whl(138,121,14,c,b)}`;
+const bus=(c,b)=>`<rect x="42" y="64" width="116" height="50" rx="8" fill="${c}"/>${[50,74,98,122].map(x=>`<rect x="${x}" y="72" width="18" height="17" fill="${b}"/>`).join('')}${whl(68,116,11,c,b)}${whl(132,116,11,c,b)}`;
+const horn=c=>`<path fill="${c}" d="M60 90H80L122 66V134L80 110H60Z"/><circle cx="54" cy="100" r="12" fill="${c}"/><path ${st(c,5)} d="M132 84Q144 100 132 116"/>`;
+const chains=(c,b)=>`<circle cx="100" cy="100" r="36" ${st(c,22)}/>${[0,1,2,3,4,5,6,7].map(i=>`<path transform="rotate(${i*45} 100 100)" stroke="${b}" stroke-width="3.5" d="M91 55L109 73M109 55L91 73"/>`).join('')}`;
+const plane=c=>`<path fill="${c}" d="M100 46Q107 54 107 70V84L148 108V120L107 108V130L120 140V148L100 142 80 148V140L93 130V108L52 120V108L93 84V70Q93 54 100 46Z"/>`;
+const loco=(c,b)=>`<rect x="58" y="84" width="66" height="28" rx="4" fill="${c}"/><rect x="112" y="62" width="36" height="50" fill="${c}"/><rect x="120" y="70" width="20" height="15" fill="${b}"/><path fill="${c}" d="M68 84V66H62L60 58H88L86 66H80V84ZM58 110L42 130H58Z"/>${whl(72,122,11,c,b)}${whl(100,122,11,c,b)}${whl(132,122,11,c,b)}`;
+const kids=c=>at(82,98,.82,ped(c))+at(124,108,.62,ped(c))+`<rect x="134" y="104" width="12" height="15" fill="${c}"/>`;
+const kidball=c=>at(88,100,.8,ped(c))+`<circle cx="136" cy="128" r="10" fill="${c}"/>`;
+const cyclist=c=>at(100,112,.9,bike(c))+`<circle cx="106" cy="54" r="9" fill="${c}"/><path ${st(c,8)} d="M90 90L100 66L116 80"/>`;
+const wind=c=>`<path ${st(c,8)} d="M86 142Q90 112 108 94"/><ellipse cx="120" cy="80" rx="26" ry="15" transform="rotate(-32 120 80)" fill="${c}"/><path ${st(c,5)} d="M44 66H82M40 86H76M46 106H74"/>`;
+const slip=(c,b)=>at(100,82,.95,carRear(c,b),-12)+`<path ${st(c,5)} d="M84 116Q74 126 86 134T86 152M114 112Q104 122 116 130T116 148"/>`;
+const stones=(c,b)=>at(112,98,.8,car(c,b))+`<circle cx="58" cy="114" r="6" fill="${c}"/><circle cx="46" cy="98" r="5" fill="${c}"/><circle cx="62" cy="90" r="4" fill="${c}"/><circle cx="42" cy="120" r="4" fill="${c}"/>`;
+const rocks=c=>`<path fill="${c}" d="M56 146V56H82L96 82 86 104 102 124 96 146Z"/><circle cx="118" cy="92" r="9" fill="${c}"/><circle cx="134" cy="118" r="11" fill="${c}"/><circle cx="114" cy="132" r="7" fill="${c}"/><circle cx="146" cy="140" r="6" fill="${c}"/>`;
+const tunnel=c=>`<path fill="${c}" d="M50 142V96A50 50 0 0 1 150 96V142H130V98A30 30 0 0 0 70 98V142Z"/>`;
+const narrowBridge=c=>`<path ${st(c,9)} d="M70 52L84 68V132L70 148M130 52L116 68V132L130 148"/>`;
+const drawbridge=c=>`<path ${st(c,9)} d="M44 112H84L114 78M156 112H130"/><path fill="${c}" d="M76 112h12v22h-12zM126 112h12v22h-12z"/><path ${st(c,4)} d="M50 146q8 -8 16 0t16 0M112 146q8 -8 16 0t16 0"/>`;
+const cross=`<path fill="${R}" d="M85 60h30v25h25v30h-25v25h-30v-25h-25v-30h25z"/>`;
+const phone=(c,b)=>`<path ${st(c,15)} d="M68 80Q100 56 132 80"/><path fill="${c}" d="M74 98H126L138 138H62Z"/><circle cx="100" cy="118" r="10" fill="${b}"/>`;
+const pump=(c,b)=>`<rect x="66" y="58" width="46" height="74" rx="4" fill="${c}"/><rect x="74" y="66" width="30" height="20" fill="${b}"/><rect x="60" y="132" width="58" height="9" fill="${c}"/><path ${st(c,6)} d="M112 86h12v36a7 7 0 0 0 14 0V78l-10 -10"/>`;
+const wrench=(c,b)=>`<path ${st(c,15)} d="M72 136L116 84"/><circle cx="124" cy="74" r="19" fill="${c}"/><path fill="${b}" transform="rotate(40 124 74)" d="M118 50h12v22h-12z"/>`;
+const bed=c=>`<path fill="${c}" d="M48 64h9v40h86V92q0 -10 -10 -10H90v18H57M48 64v74h9V116h86v22h9V104H48"/><circle cx="72" cy="90" r="9" fill="${c}"/>`;
+const cutlery=c=>`<path ${st(c,5)} d="M66 58V82Q66 94 77 94Q88 94 88 82V58M77 58V140"/><path fill="${c}" d="M116 58Q136 70 134 104H125V142H116Z"/>`;
+const tent=(c,b)=>`<path fill="${c}" d="M100 58L150 138H50Z"/><path fill="${b}" d="M100 98L116 138H84Z"/>`;
+const tire=c=>`<circle cx="100" cy="100" r="34" ${st(c,18)}/><circle cx="100" cy="100" r="9" fill="${c}"/>`;
+const umbrella=c=>`<path fill="${c}" d="M50 98A50 42 0 0 1 150 98Z"/><path ${st(c,6)} d="M100 56V134"/><path ${st(c,5)} d="M52 142q8 -8 16 0t16 0 16 0 16 0 16 0"/>`;
+const envelope=c=>`<rect x="54" y="70" width="92" height="60" ${st(c,7)}/><path ${st(c,7)} d="M54 70L100 108L146 70"/>`;
+const museum=c=>`<path fill="${c}" d="M50 84L100 56L150 84Z"/>${[60,83,107,130].map(x=>`<rect x="${x}" y="90" width="10" height="38" fill="${c}"/>`).join('')}<rect x="52" y="130" width="96" height="10" fill="${c}"/>`;
+const cup=c=>`<path fill="${c}" d="M62 76H122V102Q122 126 92 126Q62 126 62 102Z"/><path ${st(c,7)} d="M122 84Q142 84 140 97Q138 110 120 108M56 138H130"/>`;
+const tree=c=>`<circle cx="100" cy="84" r="30" fill="${c}"/><rect x="94" y="106" width="12" height="34" fill="${c}"/><path ${st(c,6)} d="M62 140H138"/>`;
+const caravan=(c,b)=>`<path fill="${c}" d="M52 80Q52 68 64 68H124Q140 68 140 84V114H52Z"/><rect x="64" y="78" width="24" height="15" fill="${b}"/><rect x="102" y="78" width="16" height="36" fill="${b}"/>${whl(90,118,11,c,b)}<path ${st(c,6)} d="M140 108H158"/>`;
+const worker=c=>`<circle cx="90" cy="60" r="10" fill="${c}"/><path ${st(c,11)} d="M92 76L104 106L92 140M104 106L122 136M96 84L118 94L130 76"/><path ${st(c,5)} d="M136 66L112 120"/><path fill="${c}" d="M102 118l16 6l-9 14l-11 -7zM40 142Q58 106 80 142Z"/>`;
+const flagger=c=>`<circle cx="92" cy="56" r="10" fill="${c}"/><path ${st(c,11)} d="M92 72V108L82 142M92 108L104 142M92 80L118 72M92 80L76 100"/><path ${st(c,5)} d="M120 90V46"/><path fill="${c}" d="M120 44H150V66H120Z"/>`;
+const dozer=(c,b)=>at(92,100,.9,tractor(c,b))+`<path fill="${c}" d="M150 92h9v44h-9z"/><path ${st(c,5)} d="M132 112H152"/>`;
+/* flechas */
+const up=(x=100,c=K,w=14)=>ln(`M${x} 152V70`,w,c)+head(x,64,0,c);
+const down=(x=100,c=K,w=14)=>ln(`M${x} 48V130`,w,c)+head(x,136,180,c);
+const turnL=(c=K)=>ln('M124 152V94H80',14,c)+head(72,94,-90,c);
+const turnR=(c=K)=>ln('M76 152V94H120',14,c)+head(128,94,90,c);
+const uturn=ln('M124 152V88a24 24 0 0 0 -48 0V112')+head(76,122,180);
+const sem=(r,y,g,x='')=>`<rect x="20" y="10" width="160" height="180" rx="14" fill="#cfd3da"/><rect x="72" y="22" width="56" height="156" rx="12" fill="${K}"/><circle cx="100" cy="52" r="19" fill="${r?'#e2231a':'#3a3a3a'}"/><circle cx="100" cy="100" r="19" fill="${y?Y:'#3a3a3a'}"/><circle cx="100" cy="148" r="19" fill="${g?'#2fbf71':'#3a3a3a'}"/>${x}`;
+const curb=c=>`<rect x="10" y="30" width="180" height="56" fill="#d9d9d4"/><path stroke="#b9b9b2" stroke-width="2" d="M70 30V86M130 30V86"/><rect x="10" y="86" width="180" height="26" fill="${c}"/><rect x="10" y="112" width="180" height="58" fill="#3a3e46"/><path stroke="#fff" stroke-width="5" stroke-dasharray="26 18" d="M10 160H190"/>`;
+const rot=[0,120,240].map(a=>`<g transform="rotate(${a} 100 100)">${ln('M100 68A32 32 0 0 0 68 100',11)}<polygon points="68,118 54,96 82,96" fill="${K}"/></g>`).join('');
+const E=(c=K)=>txt('E',104,137,c);
+const tris=(v,c=K)=>v?`<polygon points="100,62 84,38 116,38" fill="${c}"/><polygon points="100,138 84,162 116,162" fill="${c}"/>`:`<polygon points="58,100 34,84 34,116" fill="${c}"/><polygon points="142,100 166,84 166,116" fill="${c}"/>`;
+const d=(x,s=.78,y=100)=>at(100,y,s,x);
+
+const RG='Reglamentaria',PV='Preventiva',IN='Informativa',TR='Transitoria (obras)',SC='Semáforos y cordones';
+const S=[];
+const add=(l,c,g,n,s,t)=>S.push({l,c,g,n,s,t});
+
+/* ===== REGLAMENTARIAS: prohibición ===== */
+add(1,RG,'avance','Contramano',`<circle cx="100" cy="100" r="95" fill="${R}"/><rect x="30" y="82" width="140" height="36" fill="${W}"/>`,'Círculo rojo con franja blanca: la calle viene en sentido contrario, no se puede entrar.');
+add(2,RG,'avance','No avanzar',proh(up()),'Flecha hacia adelante tachada: prohibido seguir avanzando. Suele ser temporal.');
+add(2,RG,'veh','Prohibido circular autos',proh(car(K,W)),'Vehículo tachado = ese tipo de vehículo no puede circular.');
+add(2,RG,'veh','Prohibido circular motos',proh(moto(K,W)),'Las motos no pueden circular por ahí.');
+add(2,RG,'veh','Prohibido circular bicicletas',proh(bike(K)),'Las bicicletas no pueden circular por ahí.');
+add(2,RG,'veh','Prohibido circular camiones',proh(truck(K,W)),'Los camiones no pueden circular por ahí.');
+add(3,RG,'veh','Prohibido circular con acoplado',proh(trailer(K,W)),'No pueden pasar vehículos con acoplado.');
+add(2,RG,'veh','Prohibido circular peatones',proh(ped(K)),'Los peatones no pueden circular por ahí.');
+add(3,RG,'veh','Prohibido circular tracción a sangre',proh(cart(K)),'No pueden circular carros tirados por animales.');
+add(3,RG,'veh','Prohibido el paso de animales',proh(cow(K)),'No se puede circular con animales (arreos).');
+add(3,RG,'veh','Prohibido circular carros de mano',proh(handcart(K)),'No pueden circular carros empujados a mano.');
+add(3,RG,'veh','Prohibido circular tractores',proh(tractor(K,W)),'No puede circular maquinaria agrícola.');
+add(1,RG,'giro','Prohibido girar a la izquierda',proh(turnL()),'La barra roja sobre la flecha prohíbe ese giro.');
+add(1,RG,'giro','Prohibido girar a la derecha',proh(turnR()),'La barra roja sobre la flecha prohíbe ese giro.');
+add(1,RG,'giro','Prohibido girar en U',proh(uturn),'No se puede dar la vuelta para volver por donde venías.');
+add(1,RG,'adel','Prohibido adelantar',proh(at(70,100,.75,carRear(K,W))+at(130,100,.75,carRear(K,W))),'Dos autos vistos de atrás, tachados: no se puede sobrepasar.');
+add(2,RG,'adel','Prohibido ruidos molestos',proh(horn(K)),'Bocina tachada: no se puede tocar bocina ni hacer ruidos molestos.');
+add(1,RG,'E','No estacionar',proh(E()),'La E con una sola barra prohíbe estacionar, pero permite detenerse un momento.');
+add(1,RG,'E','No estacionar ni detenerse',ring(E()+slash+slash2),'La E con dos barras en cruz prohíbe estacionar y también detenerse.');
+add(3,RG,'adel','Prohibido cambiar de carril',proh(ln('M100 46V154',6)+ln('M124 150C124 112 78 104 78 70',10)+head(78,62,0,K,.8)),'Hay que mantenerse en el carril por el que se viene.');
+/* restricción */
+add(2,RG,'lim','Peso máximo 10 toneladas',ring(txt('10 t',60,121)),'No pueden pasar vehículos que pesen más de lo indicado.');
+add(3,RG,'lim','Peso máximo por eje',ring(txt('6 t',52,98)+`<path ${st(K,7)} d="M68 132H132"/><rect x="56" y="114" width="14" height="36" rx="3" fill="${K}"/><rect x="130" y="114" width="14" height="36" rx="3" fill="${K}"/>`),'El límite es por cada eje del vehículo, no por el peso total.');
+add(2,RG,'lim','Altura máxima',ring(txt('3,5 m',44,115)+tris(1)),'Triángulos arriba y abajo: límite de altura.');
+add(2,RG,'lim','Ancho máximo',ring(txt('2,5',44,115)+tris(0)),'Triángulos a los costados: límite de ancho.');
+add(3,RG,'lim','Largo máximo',ring(at(100,78,.6,truck(K,W))+`<path ${st(K,5)} d="M52 112H148"/>`+head(48,112,-90,K,.5)+head(152,112,90,K,.5)+txt('12 m',30,146)),'Silueta con flecha doble: límite de largo del vehículo.');
+add(1,RG,'vel','Velocidad máxima 60 km/h',ring(txt('60',84,130)),'Fondo blanco y borde rojo: no se puede superar ese número.');
+add(2,RG,'vel','Velocidad mínima 40 km/h',bring(txt('40',84,130,W)),'Fondo azul y número blanco: no se puede ir más despacio que eso.');
+add(2,RG,'Eazul','Estacionamiento exclusivo',bring(E(W)),'Círculo azul con borde rojo: solo estacionan los vehículos que indica la placa adicional.');
+add(2,RG,'excl','Circulación exclusiva de transporte público',bring(bus(W,B)),'Fondo azul = exclusivo: solo colectivos por ese carril.');
+add(3,RG,'excl','Circulación exclusiva de motos',bring(moto(W,B)),'Fondo azul = exclusivo: solo motos.');
+add(2,RG,'excl','Circulación exclusiva de bicicletas',bring(bike(W)),'Fondo azul = exclusivo: ciclovía o bicisenda.');
+add(3,RG,'excl','Circulación exclusiva de jinetes',bring(rider(W)),'Fondo azul = exclusivo: solo jinetes.');
+add(2,RG,'excl','Circulación exclusiva de peatones',bring(ped(W)),'Fondo azul = exclusivo: solo peatones.');
+add(3,RG,'lim','Uso obligatorio de cadenas para nieve',ring(chains(K,W)),'Neumático con cadenas: obligatorias en temporada de nieve.');
+add(1,RG,'oblig','Giro obligatorio a la derecha',ring(turnR()),'Borde rojo sin barra y flecha negra: es una obligación, no una prohibición.');
+add(1,RG,'oblig','Giro obligatorio a la izquierda',ring(turnL()),'Borde rojo sin barra y flecha negra: es una obligación, no una prohibición.');
+add(2,RG,'oblig','Sentido de circulación obligatorio',ring(ln('M48 100H130')+head(138,100,90)),'Hay que circular en el sentido que marca la flecha.');
+add(3,RG,'oblig','Paso obligado por la derecha',ring(ln('M70 64L124 126')+head(130,133,139)),'Flecha en diagonal hacia abajo: hay que pasar el obstáculo por ese lado.');
+add(2,RG,'pes','Tránsito pesado por la derecha',ring(at(74,100,.8,truckRear(K,W))+ln('M112 80L140 118',9)+head(144,124,144,K,.7)),'Los camiones deben ir por el carril de la derecha.');
+add(3,RG,'pes','Peatones por la izquierda',ring(at(118,100,.85,ped(K))+ln('M84 100H56',9)+head(48,100,-90,K,.7)),'Los peatones deben caminar por el lado izquierdo (de frente al tránsito).');
+add(2,RG,'avance','Puesto de control',ring(`<rect x="34" y="86" width="132" height="28" fill="${K}"/>`),'Franja negra en círculo de borde rojo: detención obligatoria (aduana, policía, peaje).');
+add(2,RG,'doble','Comienzo de doble mano',ring(down(76)+up(124)),'Desde ahí la calle tiene los dos sentidos de circulación.');
+/* prioridad */
+add(1,RG,'prio','Pare',`<polygon points="61,8 139,8 192,61 192,139 139,192 61,192 8,139 8,61" fill="${R}"/><polygon points="65,18 135,18 182,65 182,135 135,182 65,182 18,135 18,65" fill="none" stroke="${W}" stroke-width="5"/>${txt('PARE',52,119,W)}`,'Detención total obligatoria, aunque no venga nadie.');
+add(1,RG,'prio','Ceda el paso',`<polygon points="14,24 186,24 100,180" fill="${W}" stroke="${R}" stroke-width="18" stroke-linejoin="round"/>${txt('CEDA',19,64)}${txt('EL PASO',15,84)}`,'Hay que dejar pasar al otro; no obliga a detenerse si el paso es seguro.');
+add(3,RG,'doble','Preferencia de avance del que viene de frente',ring(down(76)+up(124,R)),'Tu flecha (la que sube) es roja: no tenés prioridad, pasa primero el que viene de frente.');
+add(2,RG,'prio','Barreras ferroviarias',`<rect x="22" y="120" width="16" height="64" fill="#777"/><g transform="rotate(-38 30 150)"><rect x="14" y="138" width="200" height="24" fill="${W}" stroke="${R}" stroke-width="3"/>${[0,2,4].map(i=>`<rect x="${14+i*40}" y="138" width="40" height="24" fill="${R}"/>`).join('')}</g>`,'Vara roja y blanca: cuando baja, prohibido cruzar las vías.');
+add(3,RG,'fin','Fin de velocidad máxima',end(txt('60',84,130,'#555'),'#8a8a8a'),'Banda gris: termina una prohibición o límite.');
+add(3,RG,'fin','Fin de velocidad mínima',end(txt('40',84,130,'#555'),R),'Banda roja: termina una obligación.');
+
+/* ===== PREVENTIVAS ===== */
+add(1,PV,'max','Cruce ferroviario',tri(at(100,118,.72,loco(K,W))),'Triángulo de borde rojo = máximo peligro. Hay un cruce con vías.');
+add(1,PV,'max','Cruz de San Andrés',[30,-30].map(a=>`<rect x="8" y="85" width="184" height="30" rx="3" transform="rotate(${a} 100 100)" fill="${W}" stroke="${R}" stroke-width="6"/>`).join(''),'Marca el lugar exacto del cruce ferroviario.');
+add(2,PV,'max','Cruce de peatones',tri(at(100,112,.62,ped(K))+`<path stroke="${K}" stroke-width="6" stroke-dasharray="10 8" d="M52 160H148"/>`),'Máximo peligro: senda peatonal en zona rural.');
+add(1,PV,'max','Atención',tri(txt('!',96,152)),'Peligro no especificado; suele llevar un cartel aclaratorio.');
+add(3,PV,'max','Panel de prevención (obstáculo o curva peligrosa)',`<rect x="14" y="60" width="172" height="80" fill="${W}" stroke="${K}" stroke-width="3"/>${[0,1,2,3].map(i=>`<path d="M${24+i*37} 64l26 36l-26 36h18l26 -36l-26 -36z" fill="${R}"/>`).join('')}`,'Franjas rojas y blancas: marcan un obstáculo o el borde de una curva.');
+add(1,PV,'curva','Curva',dia(ln('M84 152V110Q84 80 114 80H118')+head(126,80,90)),'Rombo amarillo: avisa un riesgo más adelante. Acá, una curva.');
+add(2,PV,'curva','Curva pronunciada',dia(ln('M84 152V84H118')+head(126,84,90)),'Flecha en ángulo: la curva es cerrada.');
+add(2,PV,'curva','Curva y contracurva',dia(ln('M82 152V124Q82 104 100 100Q118 96 118 76V68',12)+head(118,60,0,K,.85)),'Dos curvas seguidas en sentidos opuestos.');
+add(1,PV,'curva','Camino sinuoso',dia(ln('M92 154C92 132 116 128 110 108C104 90 84 90 92 70',12)+head(96,56,14,K,.85)),'Tres o más curvas sucesivas.');
+add(2,PV,'pend','Pendiente ascendente (subida)',dia(`<path fill="${K}" d="M56 128H144V84Z"/>`+ln('M66 100L112 76',7)+head(120,72,62,K,.6)),'La flecha sube por la cuesta.');
+add(2,PV,'pend','Pendiente descendente (bajada)',dia(`<path fill="${K}" d="M56 84V128H144Z"/>`+ln('M84 74L128 98',7)+head(136,102,118,K,.6)),'La flecha baja por la cuesta.');
+add(2,PV,'estr','Estrechamiento de calzada',dia(ln('M72 152V112L88 84V48',10)+ln('M128 152V112L112 84V48',10)),'El camino se angosta de los dos lados.');
+add(3,PV,'estr','Estrechamiento en una mano',dia(ln('M72 152V48',10)+ln('M128 152V112L112 84V48',10)),'El camino se angosta de un solo lado.');
+add(2,PV,'perfil','Perfil irregular',dia(`<path fill="${K}" d="M48 124H56C64 124 64 100 74 100S84 124 92 124H108C116 124 116 100 126 100S136 124 144 124H152V138H48Z"/>`),'Calzada con ondulaciones.');
+add(2,PV,'perfil','Badén',dia(`<path fill="${K}" d="M48 104H70C86 104 86 128 100 128S114 104 130 104H152V140H48Z"/>`),'Depresión en la calzada (puede haber agua).');
+add(1,PV,'perfil','Lomada (lomo de burro)',dia(`<path fill="${K}" d="M48 124H74C87 124 87 84 100 84S113 124 126 124H152V138H48Z"/>`),'Reductor de velocidad en la calzada.');
+add(2,PV,'riesgo','Calzada resbaladiza',dia(d(slip(K,Y),.8)),'Auto con huellas en zigzag: el piso puede estar resbaladizo.');
+add(3,PV,'riesgo','Proyección de piedras',dia(d(stones(K,Y))),'Hay piedra suelta que puede saltar.');
+add(2,PV,'riesgo','Derrumbes',dia(d(rocks(K))),'Pueden caer rocas sobre el camino.');
+add(2,PV,'puente','Túnel',dia(d(tunnel(K))),'Se aproxima un túnel.');
+add(2,PV,'puente','Puente angosto',dia(d(narrowBridge(K),.9)),'Las barandas se acercan: el puente es más angosto que el camino.');
+add(3,PV,'puente','Puente móvil',dia(d(drawbridge(K))),'Puente levadizo o giratorio.');
+add(2,PV,'limp','Altura limitada',dia(txt('3,5',38,113)+tris(1).replace(/62|38|138|162/g,m=>({62:70,38:52,138:130,162:148}[m]))),'En rombo amarillo es un aviso: más adelante hay un límite de altura.');
+add(3,PV,'limp','Ancho limitado',dia(txt('3',40,114)+`<polygon points="78,100 60,88 60,112" fill="${K}"/><polygon points="122,100 140,88 140,112" fill="${K}"/>`),'Aviso de que más adelante hay un límite de ancho.');
+add(3,PV,'div','Calzada dividida',dia(`<ellipse cx="100" cy="92" rx="8" ry="24" fill="${K}"/>`+ln('M120 152V126Q120 112 124 100V66',8)+head(124,58,0,K,.6)+ln('M76 50V96Q76 110 82 122V134',8)+head(82,142,180,K,.6)),'Empieza o termina un separador entre los dos sentidos.');
+add(1,PV,'cruce','Rotonda',dia(rot),'Se gira en sentido antihorario, dejando el centro a la izquierda.');
+add(2,PV,'cruce','Incorporación de tránsito lateral',dia(ln('M100 152V70',12)+head(100,62,0,K,.85)+ln('M138 146L104 110',9)),'Otro camino se suma al tuyo desde un costado.');
+add(2,PV,'doble','Inicio de doble circulación',dia(down(80,K,10).replace('V130','V122')+up(120,K,10).replace('V70','V78')),'Más adelante se circula en ambos sentidos.');
+add(1,PV,'cruce','Encrucijada (cruce de caminos)',dia(ln('M100 48V152',16)+ln('M54 100H146',11)),'Se aproxima un cruce.');
+add(1,PV,'cruce','Empalme en T',dia(ln('M54 72H146',14)+ln('M100 72V152',14)),'El camino termina contra otro: hay que doblar.');
+add(2,PV,'cruce','Bifurcación en Y',dia(ln('M100 152V104L66 62',13)+ln('M100 104L134 62',13)),'El camino se abre en dos.');
+add(1,PV,'gente','Escolares',dia(d(kids(K),.8)),'Zona de escuela: bajar la velocidad.');
+add(2,PV,'gente','Niños',dia(d(kidball(K),.8)),'Niño con pelota: zona de juegos o plaza.');
+add(2,PV,'gente','Ciclistas',dia(d(cyclist(K),.76)),'Puede haber ciclistas en la calzada.');
+add(3,PV,'gente','Jinetes',dia(d(rider(K),.8,106)),'Puede haber gente a caballo.');
+add(1,PV,'gente','Animales sueltos',dia(d(cow(K),.8)),'Puede haber animales en la ruta.');
+add(3,PV,'raro','Corredor aéreo',dia(d(plane(K),.8)),'Aviones volando a baja altura.');
+add(3,PV,'raro','Maquinaria agrícola',dia(d(tractor(K,Y),.76)),'Pueden circular tractores u otros vehículos lentos.');
+add(3,PV,'raro','Vientos fuertes laterales',dia(d(wind(K),.8)),'Árbol inclinado: viento cruzado.');
+add(3,PV,'curva','Flecha direccional',`<rect x="12" y="56" width="176" height="88" fill="${Y}" stroke="${K}" stroke-width="5"/>`+ln('M40 100H130',20)+`<polygon points="168,100 124,66 124,134" fill="${K}"/>`,'Rectángulo amarillo con flecha: indica hacia dónde sigue el camino.');
+add(1,PV,'anticipo','Semáforo',dia(`<rect x="82" y="46" width="36" height="108" rx="9" fill="${K}"/><circle cx="100" cy="66" r="11" fill="#e2231a"/><circle cx="100" cy="100" r="11" fill="${Y}"/><circle cx="100" cy="134" r="11" fill="#2fbf71"/>`),'Más adelante hay un semáforo.');
+add(2,PV,'anticipo','Proximidad de señal PARE',dia(`<polygon transform="translate(100 100) scale(.36) translate(-100 -100)" points="61,8 139,8 192,61 192,139 139,192 61,192 8,139 8,61" fill="${R}"/>${txt('PARE',18,106,W)}`),'Avisa que más adelante hay un PARE.');
+add(3,PV,'anticipo','Proximidad de Ceda el paso',dia(`<polygon points="66,78 134,78 100,138" fill="${W}" stroke="${R}" stroke-width="9" stroke-linejoin="round"/>`),'Avisa que más adelante hay un Ceda el paso.');
+add(3,PV,'fin','Fin de camino sinuoso',dia(ln('M92 154C92 132 116 128 110 108C104 90 84 90 92 70',12)+head(96,56,14,K,.85)+`<line x1="150" y1="50" x2="50" y2="150" stroke="#8a8a8a" stroke-width="16"/>`,W),'Placa blanca con banda gris: terminó el tramo de riesgo.');
+
+/* ===== INFORMATIVAS ===== */
+add(3,IN,'ruta','Ruta nacional',`<polygon points="36,26 164,26 164,118 100,180 36,118" fill="${W}" stroke="${K}" stroke-width="7" stroke-linejoin="round"/>${txt('12',72,112)}`,'El escudo en forma de pentágono identifica una ruta nacional.');
+add(3,IN,'ruta','Ruta provincial',`<rect x="34" y="34" width="132" height="132" rx="8" fill="${W}" stroke="${K}" stroke-width="7"/>${txt('17',72,126)}`,'El cuadrado blanco identifica una ruta provincial.');
+add(2,IN,'ruta','Orientación: destino y distancia',green(txt('POSADAS',26,92,W)+txt('25',30,132,W,132)+ln('M38 122H80',8,W)+head(86,122,90,W,.55)),'Fondo verde: informa destinos y kilómetros.');
+add(2,IN,'ruta','Mojón kilométrico',`<path d="M66 180V58Q66 24 100 24T134 58V180Z" fill="${W}" stroke="${K}" stroke-width="6"/>${txt('KM',26,84)}${txt('120',30,124)}`,'Indica el kilómetro de la ruta en el que estás.');
+const autop=`<rect x="36" y="78" width="128" height="12" fill="${W}"/><path fill="${W}" d="M62 168L88 96H97L84 168ZM138 168L112 96H103L116 168ZM48 90h10v22H48zM142 90h10v22h-10z"/>`;
+add(2,IN,'autop','Comienzo de autopista',blue(autop),'Dos calzadas y un puente: empieza la autopista.');
+add(2,IN,'autop','Fin de autopista',blue(autop+`<line x1="160" y1="28" x2="40" y2="172" stroke="${R}" stroke-width="14"/>`),'La banda roja indica que la autopista termina.');
+add(2,IN,'autop','Calle sin salida',blue(`<rect x="88" y="72" width="24" height="98" fill="${W}"/><rect x="58" y="46" width="84" height="28" fill="${R}"/>`),'La barra roja arriba indica que el camino no tiene salida.');
+add(1,IN,'Eazul','Estacionamiento permitido',blue(txt('E',130,146,W)),'Rectángulo azul con E blanca: se puede estacionar.');
+add(3,IN,'perm','Permitido girar a la izquierda',blue(turnL(W)),'Fondo azul y flecha blanca: informa que ese giro está permitido.');
+add(3,IN,'perm','Direcciones permitidas',`<circle cx="100" cy="100" r="92" fill="${B}"/>`+ln('M86 152V72',12,W)+head(86,62,0,W,.8)+ln('M86 120Q86 100 106 100H128',12,W)+head(138,100,90,W,.8),'Círculo azul con flechas blancas: solo se puede seguir en esas direcciones.');
+add(1,IN,'serv','Puesto sanitario',serv(cross),'Cruz roja: primeros auxilios.');
+add(2,IN,'serv','Teléfono',serv(phone(K,W)),'Hay un teléfono público.');
+add(1,IN,'serv','Estación de servicio',serv(pump(K,W)),'Surtidor: lugar para cargar combustible.');
+add(2,IN,'serv','Taller mecánico',serv(wrench(K,W)),'Llave: servicio mecánico.');
+add(1,IN,'serv','Hotel',serv(bed(K)),'Cama: alojamiento.');
+add(1,IN,'serv','Restaurante',serv(cutlery(K)),'Cubiertos: lugar para comer.');
+add(2,IN,'serv','Campamento',serv(tent(K,W)),'Carpa: zona de camping.');
+add(1,IN,'serv','Aeropuerto',serv(plane(K)),'Avión en señal azul: hay un aeropuerto (no es un peligro).');
+add(3,IN,'serv','Gomería',serv(tire(K)),'Neumático: reparación de cubiertas.');
+add(2,IN,'serv','Balneario',serv(umbrella(K)),'Sombrilla y agua: playa o balneario.');
+add(2,IN,'serv','Correo',serv(envelope(K)),'Sobre: oficina de correo.');
+add(3,IN,'serv','Museo',serv(museum(K)),'Edificio con columnas: museo.');
+add(2,IN,'serv','Bar',serv(cup(K)),'Taza: bar o cafetería.');
+add(3,IN,'serv','Plaza',serv(tree(K)),'Árbol: plaza o espacio verde.');
+add(3,IN,'serv','Casas rodantes',serv(caravan(K,W)),'Lugar para casas rodantes.');
+add(2,IN,'serv','Terminal de ómnibus',serv(bus(K,W)),'Colectivo en señal azul de servicios: terminal.');
+add(2,IN,'serv','Estación de ferrocarril',serv(loco(K,W)),'Locomotora en señal azul de servicios: estación de tren.');
+add(2,IN,'serv','Taxi',serv(txt('TAXI',38,113)),'Parada de taxis.');
+
+/* ===== TRANSITORIAS ===== */
+add(1,TR,'obra','Hombres trabajando',dia(d(worker(K),.8),O),'Naranja = obra en la vía. Hay gente trabajando: bajar la velocidad.');
+add(2,TR,'obra','Banderillero',dia(d(flagger(K),.8),O),'Una persona con bandera regula el paso más adelante.');
+add(3,TR,'obra','Equipo pesado en la vía',dia(d(dozer(K,O),.76),O),'Hay máquinas viales trabajando.');
+add(3,TR,'obra','Estrechamiento por obra',dia(ln('M72 152V112L88 84V48',10)+ln('M128 152V112L112 84V48',10),O),'Igual que el estrechamiento, pero naranja: es transitorio, por una obra.');
+add(1,TR,'obra','Desvío',`<rect x="10" y="50" width="180" height="100" rx="8" fill="${O}" stroke="${K}" stroke-width="5"/>${txt('DESVÍO',34,92)}`+ln('M50 122H132',10)+head(142,122,90,K,.65),'Hay que tomar otro camino por una obra.');
+add(2,TR,'obra','Calle o carretera cerrada',`<rect x="14" y="62" width="172" height="40" fill="${W}" stroke="${K}" stroke-width="3"/>${[0,1,2,3].map(i=>`<path d="M${20+i*38} 102l22 -40h22l-22 40z" fill="${O}"/>`).join('')}<path ${st(K,7)} d="M40 102V160M160 102V160M26 160H54M146 160H174"/>`,'Valla con franjas naranjas y blancas: no se puede pasar.');
+
+/* ===== SEMÁFOROS Y CORDONES ===== */
+add(1,SC,'sem','Luz roja: detenerse antes de la línea o senda',sem(1,0,0),'Con rojo no se avanza.');
+add(2,SC,'sem','Luz amarilla: detenerse, salvo que ya no se alcance a frenar',sem(0,1,0),'El amarillo no es para acelerar: si podés frenar, frenás.');
+add(3,SC,'sem','Amarillo intermitente: circular con precaución',sem(0,1,0,[0,45,90,135,180,225,270,315].map(a=>`<path transform="rotate(${a} 100 100)" stroke="${Y}" stroke-width="5" d="M100 70V60"/>`).join('').replace(/#ffd100/g,'#b58900')),'Titila: se puede pasar, con cuidado.');
+add(3,SC,'sem','Flecha verde: solo se puede ir en esa dirección',sem(0,0,0,`<circle cx="100" cy="148" r="19" fill="#0d3"/>`+ln('M114 148H92',6,K)+head(86,148,-90,K,.45)),'La flecha verde habilita únicamente ese giro.');
+add(2,SC,'cordon','Cordón amarillo: prohibido estacionar',curb(Y),'Cordón amarillo: no se estaciona, pero se puede parar para carga o pasajeros.');
+add(2,SC,'cordon','Cordón rojo: prohibido estacionar y detenerse',curb(R),'Cordón rojo: ni estacionar ni detenerse.');
+
+return S;
+})();
+const svg=s=>`<svg viewBox="0 0 200 200" role="img" aria-label="señal">${s.s}</svg>`;
+const $=id=>document.getElementById(id);
+const grp=s=>s.g==='excl'?'veh':s.g;
+const LV=[null,{t:'Nivel 1 · Básico',d:'Las que ves todos los días'},{t:'Nivel 2 · Intermedio',d:'Ruta, restricciones y servicios'},{t:'Nivel 3 · Avanzado',d:'Las menos comunes y las más confundibles'}];
+const NEED=2, ROUND=20, EXAM_N=40, EXAM_PASS=36, TH=90;
+let st={m:{},exam:0,pass:false};
+try{const x=JSON.parse(localStorage.getItem('senales_v2'));if(x&&x.m)st=x}catch(e){}
+const save=()=>{try{localStorage.setItem('senales_v2',JSON.stringify(st))}catch(e){}};
+const ofL=l=>SIGNS.filter(s=>s.l===l);
+const learned=l=>ofL(l).filter(s=>(st.m[s.n]||0)>=NEED).length;
+const done=l=>learned(l)===ofL(l).length;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+let mode,deck,idx,hits,streak,misses,cur,card,busy;
+
+function show(v){
+  for(const id of['home','game','end','study'])$(id).classList.toggle('on',id===v);
+  $('back').style.display=v==='home'?'none':'block';
+}
+function home(){
+  if(card){card.remove();card=null}
+  let h=`<p class="lead">Aparece una señal con un significado. Deslizá a la derecha si es correcto y a la izquierda si no. Una señal queda <b>aprendida</b> cuando la acertás ${NEED} veces seguidas; con todas aprendidas se abre el nivel siguiente.</p>`;
+  for(let l=1;l<=3;l++){
+    const n=ofL(l).length,k=learned(l),lock=l>1&&!done(l-1);
+    h+=`<button class="lvl ${lock?'lock':''} ${k===n?'done':''}" data-l="${l}" ${lock?'disabled':''}>
+      <b>${LV[l].t}<em>${lock?'🔒':k+' / '+n}</em></b><small>${lock?'Completá el nivel anterior':LV[l].d}</small>
+      <div class="meter"><i style="width:${k/n*100}%"></i></div></button>`;
+  }
+  const lockE=!done(3);
+  h+=`<button class="lvl ${lockE?'lock':''} ${st.pass?'done':''}" data-l="x" ${lockE?'disabled':''}>
+    <b>Examen final<em>${lockE?'🔒':st.exam?'Mejor: '+st.exam+' / '+EXAM_N:''}</em></b>
+    <small>${lockE?'Completá los 3 niveles':EXAM_N+' señales mezcladas, sin ayudas. Se aprueba con '+EXAM_PASS+'.'}</small></button>
+    <button class="sec" id="goStudy" style="margin-top:6px">📖 Estudiar las ${SIGNS.length} señales</button>
+    <button class="reset" id="reset">Borrar mi progreso</button>`;
+  $('home').innerHTML=h;
+  $('home').querySelectorAll('.lvl').forEach(b=>b.onclick=()=>start(b.dataset.l==='x'?'x':+b.dataset.l));
+  $('goStudy').onclick=()=>study(1);
+  let armed=false;
+  $('reset').onclick=e=>{if(!armed){armed=true;e.target.textContent='Tocá de nuevo para confirmar';return}
+    st={m:{},exam:0,pass:false};save();home()};
+  show('home');
+}
+function start(m){
+  mode=m;idx=0;hits=0;streak=0;misses=[];
+  if(m==='x')deck=shuffle(SIGNS.slice()).slice(0,EXAM_N);
+  else{
+    const pool=shuffle(ofL(m).slice()).sort((a,b)=>(st.m[a.n]||0)-(st.m[b.n]||0));
+    deck=shuffle(pool.slice(0,ROUND));
+  }
+  $('s3l').textContent=m==='x'?'Pregunta':'Aprendidas';
+  show('game');next();
+}
+function hud(){
+  $('s1').textContent=hits;$('s2').textContent=streak;
+  $('s3').textContent=mode==='x'?Math.min(idx+1,deck.length)+'/'+deck.length:learned(mode)+'/'+ofL(mode).length;
+  $('prog').style.width=(idx/deck.length*100)+'%';
+}
+function wrongName(s){
+  let pool=SIGNS.filter(x=>grp(x)===grp(s)&&x.n!==s.n);
+  if(!pool.length||(mode!=='x'&&Math.random()<.25))pool=SIGNS.filter(x=>x.c===s.c&&x.n!==s.n);
+  return pool[Math.random()*pool.length|0].n;
+}
+function next(){
+  hud();
+  if(idx>=deck.length)return finish();
+  const sign=deck[idx],truth=Math.random()<.5,shown=truth?sign.n:wrongName(sign);
+  cur={sign,truth,shown};
+  if(card)card.remove();
+  card=document.createElement('div');card.className='card';
+  card.innerHTML=`<div class="stamp yes">CORRECTO</div><div class="stamp no">INCORRECTO</div>
+    <div class="cat">${sign.c}</div>${svg(sign)}<div class="q">¿Esta señal significa…?</div>
+    <div class="name ${shown.length>34?'long':''}">${shown}</div>`;
+  $('stage').insertBefore(card,$('flash'));
+  drag(card);busy=false;
+}
+function drag(el){
+  let x0=null,dx=0;
+  const set=()=>{el.style.transform=`translateX(${dx}px) rotate(${dx/18}deg)`;
+    el.children[0].style.opacity=Math.max(0,Math.min(1,dx/TH));
+    el.children[1].style.opacity=Math.max(0,Math.min(1,-dx/TH));};
+  el.onpointerdown=e=>{if(busy)return;x0=e.clientX;dx=0;el.classList.remove('anim');try{el.setPointerCapture(e.pointerId)}catch(_){}};
+  el.onpointermove=e=>{if(x0===null)return;dx=e.clientX-x0;set()};
+  el.onpointerup=el.onpointercancel=()=>{if(x0===null)return;x0=null;
+    if(Math.abs(dx)>TH)answer(dx>0);else{el.classList.add('anim');dx=0;set()}};
+}
+function flash(t,c,ms){const f=$('flash');f.textContent=t;f.style.color=c;f.classList.add('on');
+  setTimeout(()=>{f.classList.remove('on');next()},ms)}
+function answer(yes){
+  if(busy||!card||idx>=deck.length||!$('game').classList.contains('on'))return;busy=true;
+  card.classList.add('anim');
+  card.style.transform=`translateX(${yes?520:-520}px) rotate(${yes?28:-28}deg)`;card.style.opacity=0;
+  card.children[yes?0:1].style.opacity=1;
+  const ok=yes===cur.truth,s=cur.sign;idx++;
+  if(ok){hits++;streak++}else{streak=0;misses.push(s)}
+  if(mode==='x'){hud();return flash('Anotado','var(--mute)',350)}
+  st.m[s.n]=ok?Math.min(NEED,(st.m[s.n]||0)+1):0;save();hud();
+  if(ok)return flash(st.m[s.n]>=NEED?'¡Aprendida!':'¡Bien!','var(--ok)',550);
+  $('shT').textContent=cur.truth?'Era correcto':'Era incorrecto';
+  $('shS').innerHTML=svg(s);$('shN').textContent=s.n;$('shP').textContent=s.t;
+  setTimeout(()=>$('sheet').classList.add('on'),250);
+}
+const row=m=>`<div class="miss">${svg(m)}<div><b>${m.n}</b><span>${m.t}</span></div></div>`;
+function finish(){
+  if(card){card.remove();card=null}
+  const n=deck.length,uniq=[...new Set(misses)];
+  let h;
+  if(mode==='x'){
+    const ok=hits>=EXAM_PASS;if(hits>st.exam)st.exam=hits;if(ok)st.pass=true;save();
+    h=`<div class="big ${ok?'ok':'bad'}">${hits}/${n}</div><h2>${ok?'¡Examen aprobado!':'No aprobado'}</h2>
+      <p>${ok?'Conocés las señales del sistema vial argentino.':'Se aprueba con '+EXAM_PASS+'. Repasá las que fallaste y volvé a intentar.'}</p>
+      <button class="pri" id="again">Rendir de nuevo</button>`;
+  }else{
+    const k=learned(mode),t=ofL(mode).length,full=k===t;
+    h=`<div class="big ${full?'ok':''}">${hits}/${n}</div><h2>${full?'¡Nivel completo!':'Aprendidas: '+k+' de '+t}</h2>
+      <p>${full?(mode<3?'Se desbloqueó el nivel siguiente.':'Se desbloqueó el examen final.'):'Seguí jugando: primero salen las que todavía no aprendiste.'}</p>
+      <button class="pri" id="again">${full?'Practicar otra vez':'Seguir con este nivel'}</button>`;
+  }
+  h+=`<button class="sec" id="toHome">Volver al inicio</button>`+(uniq.length?'<h3>Para repasar</h3>'+uniq.map(row).join(''):'');
+  $('end').innerHTML=h;$('end').scrollTop=0;
+  $('again').onclick=()=>start(mode);$('toHome').onclick=home;show('end');
+}
+function study(l){
+  const cats=[...new Set(SIGNS.map(s=>s.c))];
+  $('study').innerHTML=`<div class="tabs">${[1,2,3].map(i=>`<button class="${i===l?'on':''}" data-l="${i}">Nivel ${i}</button>`).join('')}</div>`+
+    cats.map(c=>{const r=ofL(l).filter(s=>s.c===c);return r.length?`<h3>${c} · ${r.length}</h3>`+r.map(row).join(''):''}).join('');
+  $('study').querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>study(+b.dataset.l));
+  $('study').scrollTop=0;show('study');
+}
+$('byes').onclick=()=>answer(true);
+$('bno').onclick=()=>answer(false);
+$('back').onclick=()=>{$('sheet').classList.remove('on');home()};
+$('shB').onclick=()=>{$('sheet').classList.remove('on');next()};
+addEventListener('keydown',e=>{
+  if($('sheet').classList.contains('on')){if(e.key==='Enter')$('shB').click();return}
+  if(e.key==='ArrowRight')answer(true);if(e.key==='ArrowLeft')answer(false)});
+home();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
