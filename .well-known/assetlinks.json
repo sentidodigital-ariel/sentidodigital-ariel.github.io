@@ -19,7 +19,8 @@
       "namespace": "android_app",
       "package_name": "io.github.sentidodigital_ariel.workoutstreak",
       "sha256_cert_fingerprints": [
-        "E4:E5:28:7A:A4:BD:46:EB:43:4D:40:55:43:D5:7C:14:1A:75:70:C5:08:12:D4:84:CF:35:AE:F4:02:07:A7:E8"
+        "E4:E5:28:7A:A4:BD:46:EB:43:4D:40:55:43:D5:7C:14:1A:75:70:C5:08:12:D4:84:CF:35:AE:F4:02:07:A7:E8",
+        "28:D5:2B:10:BC:B1:72:00:92:BC:62:A1:62:85:6F:96:47:94:40:20:95:F4:92:13:9C:A5:BE:E2:19:F9:2F:AB"
       ]
     }
   }
