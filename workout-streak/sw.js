@@ -1,5 +1,5 @@
 // Workout Streak — service worker
-const CACHE = 'workout-streak-v1.0.1';
+const CACHE = 'workout-streak-v1.0.2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -8,7 +8,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(k => Promise.all(k.filter(x => x.startsWith('workout-streak-') && x !== CACHE).map(x => caches.delete(x))))
+    .then(k => Promise.all(k.filter(x => x.startsWith('workout-streak-v') && x !== CACHE).map(x => caches.delete(x))))
     .then(() => self.clients.claim()));
 });
 
