@@ -343,6 +343,28 @@
   .pk-item:hover{color:var(--brass);}
   .pk-item small{color:var(--ash);font-size:11.5px;white-space:nowrap;}
   .pk-item.has{opacity:.5;}
+
+  /* importar desde texto */
+  .imp-open{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--brass-dim);border:1px solid var(--brass);border-radius:7px;color:var(--brass);padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:16px;}
+  .imp-open:hover{filter:brightness(1.1);}
+  textarea.imp-text{width:100%;min-height:190px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--chalk);font-size:14px;line-height:1.5;padding:10px 12px;font-family:'Inter',sans-serif;resize:vertical;}
+  textarea.imp-text:focus{outline:none;border-color:var(--brass);}
+  .imp-help{font-size:12px;color:var(--ash);line-height:1.5;margin:8px 0 14px;}
+  .imp-help code{font-family:'Inter',sans-serif;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:4px;padding:0 4px;color:var(--chalk);}
+  .imp-sample{background:none;border:none;color:var(--brass);font-size:12px;text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:0;font-family:'Inter',sans-serif;}
+  .imp-prev{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;padding:4px 12px;margin-bottom:12px;}
+  .imp-day{padding:10px 0;border-bottom:1px solid var(--line-soft);}
+  .imp-day:last-child{border-bottom:none;}
+  .imp-day-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .imp-day-h b{font-family:'Oswald','Arial Narrow',sans-serif;font-size:15px;font-weight:600;}
+  .imp-day-h span{font-size:11.5px;color:var(--ash);white-space:nowrap;}
+  .imp-day-f{font-size:12px;color:var(--ash);margin-top:1px;}
+  .imp-ex{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0 0;}
+  .imp-ex span:first-child{min-width:0;}
+  .imp-ex small{font-family:'Oswald','Arial Narrow',sans-serif;color:var(--brass);font-size:12.5px;white-space:nowrap;}
+  .imp-ex.warn small{color:var(--amber);}
+  .imp-note{font-size:11.5px;color:var(--amber);margin:2px 0 10px;line-height:1.45;}
+  .imp-empty{font-size:12.5px;color:var(--ash);padding:12px 0;text-align:center;}
 </style>
 </head>
 <body>
@@ -481,7 +503,7 @@
   "use strict";
 
   var APP_VERSION = "1.0";
-  var EDITION = "store"; // "store" = versión para tiendas, "personal" = la de Ariel (Pro incluido)
+  var EDITION = "personal"; // "store" = versión con pagos, "personal" = versión completa (Pro incluido)
   var PERSONAL = EDITION === "personal";
   var LEGACY_CONFIG_KEY = "ariel-gym-config", LEGACY_CHECKS_KEY = "ariel-gym-checks";
   var CONFIG_KEY = "ws-config";
@@ -1688,7 +1710,7 @@
       '<div class="field"><label>Nombre de la rutina</label><input type="text" id="routineName" value="' + esc(state.editName) + '"></div>' +
       '<div class="field narrow"><label>Meta semanal</label><input type="text" id="weeklyGoal" inputmode="numeric" placeholder="Auto: ' + autoGoal(plannedDays(state.editDraft).length) + '" value="' + esc(state.editGoal || "") + '"></div></div>';
     return '<h3>Editar rutina</h3><p class="desc">La meta semanal es cuántas sesiones completas necesitás para cumplir la semana. Vacía = automática.</p>' + goalField +
-      '<div class="editor-tabs">' + tabs + '</div><div id="editorBody">' + body + '</div>' + DATALIST +
+      '<button class="imp-open" onclick="WS.openImport()">Importar rutina desde texto</button>' + '<div class="editor-tabs">' + tabs + '</div><div id="editorBody">' + body + '</div>' + DATALIST +
       '<div class="editor-footer"><button class="btn btn-ghost" onclick="WS.cancelEdit()">Cancelar</button><button class="btn btn-primary" onclick="WS.saveEdit()">Guardar cambios</button></div>';
   }
 
@@ -1780,6 +1802,173 @@
   };
   WS.backToEditor = function(){ openOverlay(editorHtml()); };
 
+  // ---------- importar rutina desde texto ----------
+  state.importText = "";
+  state.importRestOthers = false;
+  var IMPORT_SAMPLE = "Lunes - Torso 1 (Empuje / Fuerza)\nPress banca plano 4x6-8\nRemo bajo en polea 4x8-10\nVuelos laterales 4x12-15\n\nMartes - Pierna 1 (Cuádriceps)\nSentadilla Smith 4x8-10\nPrensa 45° 3x10-12\nPlancha frontal 3x45s\n\nMiércoles: descanso";
+  var DAY_ALIASES = {lunes:"lunes",lun:"lunes",martes:"martes",mar:"martes",miercoles:"miercoles",mier:"miercoles",mie:"miercoles",jueves:"jueves",jue:"jueves",viernes:"viernes",vie:"viernes",sabado:"sabado",sab:"sabado",domingo:"domingo",dom:"domingo"};
+
+  function normTxt(t){ return String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim(); }
+  function capFirst(t){ t = t.trim(); return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
+  function libMatch(name){
+    var n = normTxt(name);
+    for(var i = 0; i < LIBRARY.length; i++){
+      for(var j = 0; j < LIBRARY[i].items.length; j++){
+        if(normTxt(LIBRARY[i].items[j]) === n) return {name:LIBRARY[i].items[j], s:LIBRARY[i].s, r:LIBRARY[i].r};
+      }
+    }
+    return null;
+  }
+
+  function parseDayHeader(line){
+    var m = /^\s*(?:[#*\-•·]+\s*)?(?:dia\s+)?([a-z]+)\b\.?\s*(.*)$/.exec(normTxt(line));
+    if(!m || !DAY_ALIASES[m[1]]) return null;
+    var key = DAY_ALIASES[m[1]];
+    // texto original después del nombre del día
+    var raw = line.replace(/^\s*(?:[#*\-•·]+\s*)?/, "");
+    var words = raw.split(/\s+/);
+    var skip = normTxt(words[0]) === "dia" ? 2 : 1;
+    var rest = words.slice(skip).join(" ").replace(/^[\s.:\-–—|,]+/, "").replace(/[\s:]+$/, "");
+    // si después del día viene una serie (ej. "Lunes press banca 4x8") no es encabezado
+    if(/\d+\s*(?:[x×*]|series?)\s*\S/i.test(rest)) return null;
+    var title = rest, focus = "";
+    var pm = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(rest);
+    if(pm){ title = pm[1]; focus = pm[2]; }
+    else {
+      var sp = rest.split(/\s+[-–—|]\s+|\s*:\s+/);
+      if(sp.length > 1){ title = sp[0]; focus = sp.slice(1).join(" / "); }
+    }
+    title = title.replace(/[\s\-–—:|]+$/, "").trim();
+    var isRest = /^(descanso|libre|off|rest)\b/.test(normTxt(title)) || /^descanso\b/.test(normTxt(focus));
+    return {key:key, title:capFirst(title), focus:capFirst(focus), rest:isRest};
+  }
+
+  function parseExercise(line){
+    var t = line.replace(/^\s*(?:[-–—•·*>]+|\d{1,2}\s*[.)\-]|[a-z]\))\s*/i, "").trim();
+    if(!t || !/[a-záéíóúñü]/i.test(t)) return null;
+    var re = /^(.*?)[\s:,;\-–—|]*\b(\d{1,2})\s*(?:[x×*]|series?\s*(?:de|x|×)?)\s*(.+)$/i;
+    var m = re.exec(t);
+    var name, series, reps, guessed = false;
+    if(m && m[1].trim()){
+      name = m[1]; series = m[2];
+      reps = m[3].replace(/\s*(?:reps?|repeticiones?)\b\.?/i, " ").replace(/\s+/g, " ").trim();
+      if(!reps) reps = "10-12";
+    } else {
+      name = t; guessed = true;
+    }
+    name = name.replace(/[\s:,;\-–—|]+$/, "").trim();
+    if(!name) return null;
+    var lib = libMatch(name);
+    if(lib) name = lib.name; else name = capFirst(name);
+    if(guessed){ var d = lib ? {s:lib.s, r:lib.r} : libDefaults(name); series = d.s; reps = d.r; }
+    return {name:name, series:series, reps:reps, guessed:guessed};
+  }
+
+  function parseImport(text){
+    var days = {}, order = [], cur = null, orphan = [];
+    String(text || "").split(/\r?\n/).forEach(function(raw){
+      var line = raw.trim();
+      if(!line) return;
+      var h = parseDayHeader(line);
+      if(h){
+        if(!days[h.key]){ order.push(h.key); days[h.key] = {title:h.title, focus:h.focus, rest:h.rest, exercises:[]}; }
+        else { if(h.title) days[h.key].title = h.title; if(h.focus) days[h.key].focus = h.focus; if(h.rest) days[h.key].rest = true; }
+        cur = h.key; return;
+      }
+      var ex = parseExercise(line);
+      if(!ex) return;
+      if(cur){
+        if(/^(descanso|libre|off)\b\.?$/.test(normTxt(line))){ days[cur].rest = true; return; }
+        days[cur].exercises.push(ex);
+      } else orphan.push(ex);
+    });
+    // sin días escritos: todo va al día que está abierto en el editor
+    if(!order.length && orphan.length){
+      var k = state.editDay, cd = state.editDraft[k];
+      order.push(k);
+      days[k] = {title:(!cd.rest && cd.title) ? cd.title : "Entrenamiento", focus:cd.rest ? "" : (cd.focus || ""), rest:false, exercises:orphan, implicit:true};
+      orphan = [];
+    }
+    order.forEach(function(k){
+      var d = days[k];
+      if(d.exercises.length) d.rest = false;
+      if(!d.rest && !d.title) d.title = "Entrenamiento";
+    });
+    order.sort(function(a, b){ return DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b); });
+    return {days:days, order:order, orphan:orphan};
+  }
+
+  function importPreviewHtml(){
+    var res = parseImport(state.importText);
+    if(!res.order.length) return '<div class="imp-prev"><div class="imp-empty">Acá vas a ver cómo queda la rutina a medida que escribís.</div></div>';
+    var guessedAny = false;
+    var html = res.order.map(function(k){
+      var d = res.days[k];
+      if(d.rest) return '<div class="imp-day"><div class="imp-day-h"><b>' + DAY_NAME[k] + '</b><span>Descanso</span></div></div>';
+      var exs = d.exercises.map(function(e){
+        if(e.guessed) guessedAny = true;
+        return '<div class="imp-ex' + (e.guessed ? " warn" : "") + '"><span>' + esc(e.name) + '</span><small>' + esc(e.series) + ' × ' + esc(e.reps) + (e.guessed ? " *" : "") + '</small></div>';
+      }).join("") || '<div class="imp-day-f">Sin ejercicios todavía.</div>';
+      return '<div class="imp-day"><div class="imp-day-h"><b>' + DAY_NAME[k] + ' · ' + esc(d.title) + '</b><span>' + d.exercises.length + ' ejercicio' + (d.exercises.length === 1 ? "" : "s") + '</span></div>' +
+        (d.focus ? '<div class="imp-day-f">' + esc(d.focus) + '</div>' : '') + exs + '</div>';
+    }).join("");
+    var notes = "";
+    if(guessedAny) notes += '<div class="imp-note">* No tenía series × reps escritas: se completaron con un valor sugerido. Podés corregirlas después en el editor.</div>';
+    if(res.days[res.order[0]] && res.days[res.order[0]].implicit) notes += '<div class="imp-note">No encontré nombres de días, así que todo va al ' + DAY_NAME[res.order[0]] + ' (el día abierto en el editor).</div>';
+    if(res.orphan.length) notes += '<div class="imp-note">' + res.orphan.length + ' ejercicio(s) antes del primer día quedaron afuera. Poné el día arriba de ellos.</div>';
+    return '<div class="imp-prev">' + html + '</div>' + notes;
+  }
+
+  function importHtml(){
+    return '<h3>Importar rutina desde texto</h3>' +
+      '<p class="desc">Escribí o pegá tu rutina. Cada día empieza con su nombre y abajo van los ejercicios, uno por renglón.</p>' +
+      '<textarea class="imp-text" id="impText" placeholder="Lunes - Torso 1 (Empuje)&#10;Press banca plano 4x6-8&#10;Remo bajo en polea 4x8-10&#10;&#10;Martes - Pierna 1&#10;Sentadilla Smith 4x8-10" oninput="WS.importInput(this.value)">' + esc(state.importText) + '</textarea>' +
+      '<div class="imp-help">Formato: <code>Ejercicio 4x8-10</code>. También sirve <code>4 series de 10</code>, <code>3x45s</code> o <code>3x al fallo</code>. Lo que va entre paréntesis en el día es el enfoque. Escribí <code>descanso</code> al lado del día para marcarlo libre. ' +
+      '<button class="imp-sample" onclick="WS.importSample()">Cargar ejemplo</button></div>' +
+      '<div class="field"><label>Días que no están en el texto</label><div class="daytype-toggle">' +
+        '<div class="daytype-opt' + (!state.importRestOthers ? " active" : "") + '" onclick="WS.importRestMode(false)">Dejarlos como están</div>' +
+        '<div class="daytype-opt' + (state.importRestOthers ? " active" : "") + '" onclick="WS.importRestMode(true)">Pasarlos a descanso</div></div></div>' +
+      '<div id="impPreview">' + importPreviewHtml() + '</div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" onclick="WS.backToEditor()">Volver</button><button class="btn btn-primary" id="impApply" onclick="WS.applyImport()">Pasar al editor</button></div>';
+  }
+
+  WS.openImport = function(){ syncDraft(); openOverlay(importHtml()); };
+  WS.importInput = function(v){ state.importText = v; document.getElementById("impPreview").innerHTML = importPreviewHtml(); };
+  WS.importSample = function(){ state.importText = IMPORT_SAMPLE; openOverlay(importHtml()); };
+  WS.importRestMode = function(on){
+    var ta = document.getElementById("impText"); if(ta) state.importText = ta.value;
+    state.importRestOthers = on; openOverlay(importHtml());
+  };
+  WS.applyImport = function(){
+    var ta = document.getElementById("impText"); if(ta) state.importText = ta.value;
+    var res = parseImport(state.importText);
+    if(!res.order.length){ toast("Escribí al menos un día con sus ejercicios"); return; }
+    var total = 0;
+    res.order.forEach(function(k){
+      var nd = res.days[k], old = state.editDraft[k] || {exercises:[]};
+      // se reusan los ids de los ejercicios que ya estaban, así no se pierde el historial de pesos
+      var pool = (old.exercises || []).slice();
+      var exercises = nd.exercises.map(function(e){
+        var idx = pool.findIndex(function(o){ return normTxt(o.name) === normTxt(e.name); });
+        var id = idx >= 0 ? pool.splice(idx, 1)[0].id : uid();
+        return {id:id, name:e.name, series:e.series, reps:e.reps};
+      });
+      total += exercises.length;
+      if(nd.rest) state.editDraft[k] = {title:"Descanso", focus:"", rest:true, exercises:[], note:old.note || "Descanso."};
+      else state.editDraft[k] = {title:nd.title, focus:nd.focus, rest:false, note:"", exercises:exercises};
+    });
+    if(state.importRestOthers){
+      DAY_ORDER.forEach(function(k){
+        if(res.order.indexOf(k) < 0) state.editDraft[k] = {title:"Descanso", focus:"", rest:true, exercises:[], note:"Descanso."};
+      });
+    }
+    var firstTrain = res.order.filter(function(k){ return !state.editDraft[k].rest; })[0];
+    state.editDay = firstTrain || res.order[0];
+    state.importText = "";
+    openOverlay(editorHtml());
+    toast(total + " ejercicio" + (total === 1 ? "" : "s") + " cargados. Revisá y tocá Guardar cambios");
+  };
+
   WS.cancelEdit = function(){ state.editDraft = null; closeOverlay(); };
   WS.saveEdit = async function(){
     syncDraft();
@@ -1815,3 +2004,5 @@
 </script>
 </body>
 </html>
+
+</body></html>
