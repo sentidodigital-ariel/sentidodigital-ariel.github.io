@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.sentidodigital_ariel.senales",
+        "sha256_cert_fingerprints": ["DC:38:B0:CC:DE:61:03:DA:D0:41:81:4B:6C:89:2F:28:0C:FA:9E:C4:A4:61:80:A6:CB:2D:56:72:BD:75:D3:34"]
+      }
+    }]
